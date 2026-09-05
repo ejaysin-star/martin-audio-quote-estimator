@@ -378,10 +378,10 @@
       background:#000; color:#fff; border-radius:6px;
       padding:12px 18px; margin-bottom:14px;
     }
-    .print-header img{ height:34px; width:auto; display:block; object-fit:contain; }
+    .print-header img{ height:85px; width:auto; display:block; object-fit:contain; }
     .print-project{
       font-family:var(--font-display); font-weight:700;
-      font-size:1.1rem; color:#fff; letter-spacing:0.01em;
+      font-size:2.2rem; color:#fff; letter-spacing:0.01em;
       white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:70%;
     }
     .topbar, .room-actions, .steppers, .rack-strip, .hero, .section-head .hint,
@@ -439,6 +439,11 @@
     .summary-total-card .amt{ color:#000; }
 
     .summary{ box-shadow:none; border:1px solid #999; }
+
+    /* --- last-page Summary: description & amount enlarged 2.5x --- */
+    .sum-row label, .sum-row .v, .sum-row input, .sum-row b,
+    .summary-total-card .lbl, .summary-total-card .amt, .summary-total-card .sub{ font-size:2.5em !important; }
+    .summary-total-card{ break-inside:avoid; }
   }
 </style>
 </head>
