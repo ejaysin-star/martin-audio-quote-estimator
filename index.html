@@ -758,6 +758,15 @@ function isAuto(room, key){
 }
 
 /* ================= BUILD BOM ================= */
+/* Install accessories priced per room-size class (per lot):
+   25-30 m² → 400 · 35-40 m² → 600 · 60-75 m² → 800 · 80-100 m² → 1000 · 110 m²+ → 1200 */
+function installPrice(q15){
+  if(q15<=2) return 400;
+  if(q15<=4) return 600;
+  if(q15<=6) return 800;
+  if(q15<=8) return 1000;
+  return 1200;
+}
 function buildRows(room){
   const q = room.q;
   const it = (g,key,name,specKey,unitKey,qty,price)=> ({g:t(g), key, name, spec:t(specKey), unit:t(unitKey), qty, price});
@@ -779,7 +788,7 @@ function buildRows(room){
   rows.push(it('Cabling & Connectors','sig','Signal cable','specSig','unitM',valOf(room,'sig'),PRICES.CSIG));
   rows.push(it('Cabling & Connectors','full','Full-range cable','specFull','unitM',valOf(room,'full'),PRICES.CFULL));
   rows.push(it('Cabling & Connectors','sub','Sub cable','specSub','unitM',valOf(room,'sub'),PRICES.CSUB));
-  rows.push(it('Cabling & Connectors','install','Install accessories','specInstall','unitLot',valOf(room,'install'),PRICES.INSTALL));
+  rows.push(it('Cabling & Connectors','install','Install accessories','specInstall','unitLot',valOf(room,'install'),installPrice(q.q15)));
   return rows;
 }
 function roomTotal(rows){ return rows.reduce((s,r)=> s + r.qty*r.price, 0); }
