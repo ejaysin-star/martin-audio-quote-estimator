@@ -283,6 +283,7 @@
   }
   .item-name{ font-weight:600; font-size:0.94rem; }
   .item-spec{ font-size:0.76rem; color:var(--text-faint); }
+  .bom tbody tr.cabling-sum{ display:none; }
   .bom .price{ font-size:0.86rem; color:var(--text-dim); }
   .bom .amount-val{ font-weight:700; font-family:var(--font-display); }
 
@@ -381,7 +382,7 @@
     .print-header img{ height:85px; width:auto; display:block; object-fit:contain; }
     .print-project{
       font-family:var(--font-display); font-weight:700;
-      font-size:2.2rem; color:#fff; letter-spacing:0.01em;
+      font-size:25px; color:#fff; letter-spacing:0.01em;
       white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:70%;
     }
     .topbar, .room-actions, .steppers, .rack-strip, .hero, .section-head .hint,
@@ -412,6 +413,12 @@
     .bom .amount-val{ color:#000; }
     .bom td.qty span{ color:#444 !important; }
     .bom tbody tr.group td{ color:#000 !important; background:#eee !important; border-bottom:1px solid #ccc !important; }
+    /* Cabling & Connectors: print only the lump sum, hide per-item rows */
+    .bom tbody tr.cabling-row{ display:none !important; }
+    .bom tbody tr.cabling-sum{ display:table-row !important; }
+    .bom tbody tr.cabling-sum td{ border-top:1px solid #999; }
+    .bom tbody tr.cabling-sum td:first-child{ font-weight:600; }
+    .bom tbody tr.cabling-sum{ break-inside:avoid; }
 
     /* --- uniform text size across the whole printed PDF --- */
     .room-title, .room-title input,
@@ -440,9 +447,9 @@
 
     .summary{ box-shadow:none; border:1px solid #999; }
 
-    /* --- last-page Summary: description & amount enlarged 2.5x --- */
+    /* --- last-page Summary: description & amount enlarged --- */
     .sum-row label, .sum-row .v, .sum-row input, .sum-row b,
-    .summary-total-card .lbl, .summary-total-card .amt, .summary-total-card .sub{ font-size:2.5em !important; }
+    .summary-total-card .lbl, .summary-total-card .amt, .summary-total-card .sub{ font-size:25px !important; }
     .summary-total-card{ break-inside:avoid; }
   }
 </style>
@@ -585,6 +592,7 @@ const I18N = {
     unitPrefix:'Unit', evenOnly:' · even only', usd:'USD',
     autoTag:'Auto-matched', auto:'auto', custom:'custom', reset:'reset',
     'Speakers':'Speakers', 'Amplification':'Amplification', 'Processing & Rack':'Processing & Rack', 'Cabling & Connectors':'Cabling & Connectors',
+    lumpSum:'lump sum',
     specQ15r:'Martin Audio BLACKLINE Q15 · 8Ω · 800W AES · full-range',
     specQ218r:'Martin Audio BLACKLINE Q218 · 4Ω · 1600W AES · dual-18" sub',
     specQ118r:'Martin Audio Blackline Q118 · 8Ω · 800W AES · single-18" sub',
@@ -634,6 +642,7 @@ const I18N = {
     unitPrefix:'单价', evenOnly:' · 仅偶数', usd:'USD',
     autoTag:'自动匹配', auto:'自动', custom:'自定义', reset:'重置',
     'Speakers':'音箱', 'Amplification':'功放', 'Processing & Rack':'处理与机柜', 'Cabling & Connectors':'线缆与连接器',
+    lumpSum:'总价',
     specQ15r:'Martin Audio BLACKLINE Q15 · 8Ω · 800W AES · 全频',
     specQ218r:'Martin Audio BLACKLINE Q218 · 4Ω · 1600W AES · 双 18" 低音',
     specQ118r:'Martin Audio Blackline Q118 · 8Ω · 800W AES · 单 18" 低音',
@@ -830,12 +839,15 @@ function roomHTML(r){
     (isAuto(r,key)?'':` <button data-revert="${key}">${t('reset')}</button>`) +
     `</span>`;
 
-  let table='', lastG=null;
+  let table='', lastG=null, cabSum=0;
+  const cableG = t('Cabling & Connectors');
   for(const row of rows){
     if(row.g!==lastG){ table+=`<tr class="group"><td colspan="5">${row.g}</td></tr>`; lastG=row.g; }
     const amount = row.qty*row.price;
+    const isCab = row.g===cableG;
+    if(isCab) cabSum += amount;
     table+=`
-    <tr data-key="${row.key}">
+    <tr data-key="${row.key}"${isCab?' class="cabling-row"':''}>
       <td><div class="item-name">${row.name}</div><div class="item-spec">${row.spec}</div></td>
       <td class="qty">
         <div class="qty-cell">
@@ -849,6 +861,9 @@ function roomHTML(r){
       <td class="amount price"><span class="price">${row.price.toLocaleString('en-US')}</span></td>
       <td class="amount"><span class="amount-val" data-amt="${row.key}">${fmt(amount)}</span></td>
     </tr>`;
+  }
+  if(cabSum>=0){
+    table+=`<tr class="cabling-sum"><td colspan="4"><em>${t('lumpSum')}</em></td><td class="amount"><span class="amount-val" data-amt="cabling-sum">${fmt(cabSum)}</span></td></tr>`;
   }
 
   return `
