@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Martin Audio — Room Quotation Estimator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* ============ DESIGN TOKENS ============ */
+  :root{
+    --font-display: "Space Grotesk", system-ui, sans-serif;
+    --font-body: "Instrument Sans", system-ui, sans-serif;
+
+    --hue: 62;                     /* warm amber cast on neutrals */
+    --accent: oklch(0.80 0.135 74);
+    --accent-strong: oklch(0.86 0.145 76);
+    --accent-dim: oklch(0.62 0.11 72);
+    --danger: oklch(0.62 0.19 25);
+
+    --bg: oklch(0.155 0.012 62);
+    --bg-soft: oklch(0.19 0.014 62);
+    --surface: oklch(0.225 0.016 62);
+    --surface-2: oklch(0.27 0.018 62);
+    --line: oklch(0.33 0.02 62);
+
+    --text: oklch(0.935 0.012 72);
+    --text-dim: oklch(0.70 0.018 66);
+    --text-faint: oklch(0.55 0.02 64);
+
+    --shadow-1: 0 1px 2px oklch(0.10 0.02 62 / 0.5), 0 8px 24px oklch(0.10 0.02 62 / 0.35);
+    --shadow-2: 0 2px 6px oklch(0.10 0.02 62 / 0.4), 0 18px 48px oklch(0.08 0.02 62 / 0.45);
+
+    --radius: 14px;
+    --radius-sm: 9px;
+    --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+    --space-5: 24px; --space-6: 32px; --space-7: 48px; --space-8: 64px;
+  }
+  html[data-theme="light"]{
+    --accent: oklch(0.60 0.13 72);
+    --accent-strong: oklch(0.50 0.13 72);
+    --accent-dim: oklch(0.70 0.11 72);
+    --bg: oklch(0.955 0.012 70);
+    --bg-soft: oklch(0.93 0.014 70);
+    --surface: oklch(0.985 0.008 70);
+    --surface-2: oklch(0.925 0.014 70);
+    --line: oklch(0.86 0.016 70);
+    --text: oklch(0.24 0.02 66);
+    --text-dim: oklch(0.42 0.02 64);
+    --text-faint: oklch(0.55 0.02 62);
+    --shadow-1: 0 1px 2px oklch(0.30 0.03 70 / 0.10), 0 10px 28px oklch(0.35 0.03 70 / 0.10);
+    --shadow-2: 0 2px 6px oklch(0.30 0.03 70 / 0.10), 0 20px 52px oklch(0.35 0.03 70 / 0.14);
+  }
+
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html{ scroll-behavior:smooth; }
+  body{
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text);
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+    font-variant-numeric: tabular-nums;
+  }
+  h1,h2,h3,.display{ font-family:var(--font-display); font-weight:600; letter-spacing:-0.02em; }
+  .num{ font-family:var(--font-display); font-variant-numeric: tabular-nums; }
+
+  button{ font-family:inherit; cursor:pointer; border:none; background:none; color:inherit; }
+  input{ font-family:inherit; color:inherit; }
+  ::selection{ background: var(--accent); color: oklch(0.18 0.02 62); }
+  :focus-visible{ outline: 2px solid var(--accent); outline-offset:2px; border-radius:4px; }
+
+  /* ============ LAYOUT ============ */
+  .wrap{ max-width:1180px; margin:0 auto; padding:0 clamp(16px, 4vw, 40px); }
+
+  /* Sticky top bar */
+  .topbar{
+    position:sticky; top:0; z-index:50;
+    background: color-mix(in oklch, var(--bg) 82%, transparent);
+    backdrop-filter: blur(14px);
+    border-bottom:1px solid var(--line);
+  }
+  .topbar-inner{ display:flex; align-items:center; gap:var(--space-4); padding:var(--space-3) 0; }
+  .brand{ display:flex; align-items:center; gap:12px; }
+  .brand-mark{
+    width:38px; height:38px; border-radius:11px;
+    background: var(--accent);
+    display:grid; place-items:center;
+    font-family:var(--font-display); font-weight:700; font-size:15px;
+    color: oklch(0.17 0.02 62);
+    box-shadow: var(--shadow-1);
+  }
+  .brand-name{ font-family:var(--font-display); font-weight:700; letter-spacing:-0.01em; font-size:1rem; line-height:1.15; }
+  .brand-sub{ font-size:0.72rem; color:var(--text-faint); letter-spacing:0.14em; text-transform:uppercase; }
+  .topbar-actions{ margin-left:auto; display:flex; align-items:center; gap:var(--space-2); }
+  .grand-tag{
+    text-align:right; padding: 4px 14px;
+    border:1px solid var(--line); border-radius: var(--radius-sm);
+    background: var(--surface);
+  }
+  .grand-tag small{ display:block; font-size:0.66rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--text-faint); }
+  .grand-tag strong{ font-family:var(--font-display); font-size:1.15rem; color:var(--accent-strong); }
+
+  .btn{
+    display:inline-flex; align-items:center; gap:8px;
+    padding: 10px 16px; border-radius: var(--radius-sm);
+    font-weight:600; font-size:0.92rem; line-height:1;
+    border:1px solid var(--line);
+    background: var(--surface);
+    color: var(--text);
+    transition: transform .14s cubic-bezier(.22,1,.36,1), background .14s, border-color .14s, box-shadow .14s;
+    min-height:44px;
+  }
+  .btn:hover{ background: var(--surface-2); border-color: var(--text-faint); transform: translateY(-1px); }
+  .btn:active{ transform: translateY(0) scale(0.98); }
+  .btn-primary{ background: var(--accent); border-color: transparent; color: oklch(0.17 0.02 62); font-weight:700; }
+  .btn-primary:hover{ background: var(--accent-strong); }
+  .btn-ghost{ background: transparent; border-color: var(--line); }
+  .btn-danger{ color: var(--danger); }
+  .btn-danger:hover{ background: color-mix(in oklch, var(--danger) 14%, var(--surface)); border-color: var(--danger); }
+  .btn-sm{ padding:7px 11px; font-size:0.82rem; min-height:36px; }
+  .icon-btn{
+    width:44px; height:44px; display:grid; place-items:center;
+    border-radius: var(--radius-sm); border:1px solid var(--line);
+    background: var(--surface); color:var(--text-dim);
+    transition: all .14s;
+  }
+  .icon-btn:hover{ background:var(--surface-2); color:var(--text); border-color:var(--text-faint); }
+
+  /* Language switch + PDF text size */
+  .lang-seg{ display:flex; border:1px solid var(--line); border-radius: var(--radius-sm); overflow:hidden; }
+  .lang-seg button{
+    padding: 0 14px; min-height:44px; font-weight:700; font-size:0.85rem;
+    color:var(--text-dim); background:var(--surface);
+    transition: all .14s;
+  }
+  .lang-seg button:hover{ color:var(--text); }
+  .lang-seg button.on{ background:var(--accent); color:oklch(0.17 0.02 62); }
+  .sel{
+    appearance:none; -webkit-appearance:none;
+    font-family:inherit; font-weight:600; font-size:0.85rem;
+    color:var(--text); background:var(--surface);
+    border:1px solid var(--line); border-radius: var(--radius-sm);
+    padding: 9px 30px 9px 12px; min-height:44px; cursor:pointer;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 12px center;
+  }
+  .sel:hover{ border-color:var(--text-faint); }
+
+  /* Hero */
+  .hero{ padding: var(--space-8) 0 var(--space-6); position:relative; }
+  .hero::after{
+    content:""; position:absolute; inset:auto 0 0 0; height:1px;
+    background: linear-gradient(90deg, transparent, var(--line) 20%, var(--line) 80%, transparent);
+  }
+  .project-bar{
+    display:flex; align-items:baseline; gap:0.5em;
+    padding-bottom:0.18em; margin-bottom: var(--space-2);
+    border-bottom:2px solid var(--line);
+    font-family:var(--font-display); font-weight:700;
+    font-size: clamp(2rem, 5.4vw, 3.6rem); line-height:1.02;
+    color: var(--text);
+  }
+  .project-label{ white-space:nowrap; }
+  .project-input{ flex:1; min-width:0; background:transparent; border:none; outline:none; color:var(--text); font:inherit; }
+  .project-input::placeholder{ color:var(--text-faint); opacity:.6; }
+  .hero h1{ font-size: clamp(2rem, 5.4vw, 3.6rem); line-height:1.02; max-width:16ch; }
+  .hero h1 em{ font-style:normal; color:var(--accent-strong); }
+  .hero p.lede{ margin-top: var(--space-4); max-width:56ch; color:var(--text-dim); font-size:1.05rem; }
+
+  .stat-strip{
+    margin-top: var(--space-6);
+    display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-3);
+  }
+  .stat{
+    background: var(--surface); border-radius: var(--radius);
+    padding: var(--space-4) var(--space-5);
+    box-shadow: var(--shadow-1);
+  }
+  .stat b{ display:block; font-family:var(--font-display); font-size:1.7rem; font-weight:600; letter-spacing:-0.02em; }
+  .stat span{ font-size:0.74rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-faint); }
+  .stat.accent b{ color: var(--accent-strong); }
+
+  /* Section heading */
+  .section-head{ display:flex; align-items:baseline; gap: var(--space-4); margin: var(--space-8) 0 var(--space-5); }
+  .section-head h2{ font-size:clamp(1.3rem, 2.4vw, 1.7rem); }
+  .section-head .rule{ flex:1; height:1px; background:var(--line); transform:translateY(-4px); }
+  .section-head .hint{ color:var(--text-faint); font-size:0.85rem; }
+
+  /* Room bands */
+  .rooms{ display:flex; flex-direction:column; gap: var(--space-7); }
+  .room{
+    position:relative;
+    background: var(--bg-soft);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-2);
+    padding: var(--space-5) clamp(16px, 3vw, 28px);
+  }
+  .room::before{
+    content:""; position:absolute; left:0; top:22px; bottom:22px; width:4px;
+    border-radius: 4px; background: var(--accent);
+    opacity: .9;
+  }
+  .room-head{ display:flex; flex-wrap:wrap; align-items:center; gap: var(--space-3); margin-bottom: var(--space-5); }
+  .room-title{ font-size: clamp(1.25rem, 2.2vw, 1.55rem); font-family:var(--font-display); font-weight:700; }
+  .room-title input{
+    font-family:var(--font-display); font-weight:700; font-size:inherit;
+    background:transparent; border:none; border-bottom:2px dashed var(--line);
+    padding:2px 4px; min-width:120px; color:var(--text);
+  }
+  .room-title input:hover, .room-title input:focus{ border-color: var(--accent); outline:none; }
+  .room-total{ margin-left:auto; text-align:right; }
+  .room-total small{ display:block; font-size:0.7rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--text-faint); }
+  .room-total strong{ font-family:var(--font-display); font-size: clamp(1.6rem, 3vw, 2.1rem); font-weight:700; color:var(--accent-strong); }
+  .room-total strong small{ display:inline; font-size:0.9rem; color:var(--text-dim); text-transform:none; letter-spacing:0; }
+  .room-actions{ display:flex; gap:8px; }
+
+  /* Speaker steppers */
+  .steppers{ display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-5); }
+  .step{
+    background: var(--surface); border-radius: var(--radius);
+    padding: var(--space-3) var(--space-4);
+    box-shadow: var(--shadow-1);
+  }
+  .step-label{ display:flex; align-items:center; justify-content:space-between; margin-bottom: var(--space-2); }
+  .step-label .name{ font-weight:600; font-family:var(--font-display); font-size:0.98rem; }
+  .step-label .model{ font-size:0.7rem; color:var(--text-faint); letter-spacing:0.06em; }
+  .step-ctl{ display:flex; align-items:center; gap: var(--space-2); }
+  .step-ctl button{
+    width:44px; height:44px; flex:none; border-radius: var(--radius-sm);
+    background: var(--surface-2); border:1px solid var(--line);
+    font-size:1.3rem; font-weight:600; color:var(--text);
+    transition: all .12s;
+  }
+  .step-ctl button:hover{ background: var(--accent); border-color:transparent; color:oklch(0.17 0.02 62); }
+  .step-ctl button:active{ transform:scale(0.94); }
+  .step-ctl button:disabled{ opacity:.35; cursor:not-allowed; }
+  .step-ctl button:disabled:hover{ background:var(--surface-2); border-color:var(--line); color:var(--text); transform:none; }
+  .step-ctl output{
+    flex:1; text-align:center; font-family:var(--font-display); font-weight:700; font-size:1.8rem;
+    min-width:2ch;
+  }
+  .step-sub{ margin-top: var(--space-2); font-size:0.74rem; color:var(--text-faint); }
+  .step-sub b{ color:var(--text-dim); font-weight:600; }
+
+  /* Matched rack strip */
+  .rack-strip{
+    display:flex; flex-wrap:wrap; gap: var(--space-2); align-items:center;
+    padding: var(--space-3) var(--space-4);
+    border:1px dashed var(--line); border-radius: var(--radius);
+    margin-bottom: var(--space-5);
+    background: color-mix(in oklch, var(--surface) 55%, transparent);
+  }
+  .rack-strip .tag{ font-size:0.72rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--text-faint); }
+  .chip{
+    display:inline-flex; align-items:center; gap:7px;
+    background: var(--surface-2); border:1px solid var(--line);
+    padding:6px 12px; border-radius:999px; font-size:0.86rem; font-weight:500;
+  }
+  .chip b{ font-family:var(--font-display); color:var(--accent-strong); }
+  .chip .u{ color:var(--text-faint); font-size:0.72rem; }
+
+  /* BOM table */
+  .bom{ border-radius: var(--radius); overflow:hidden; border:1px solid var(--line); }
+  .bom table{ width:100%; border-collapse:collapse; }
+  .bom thead th{
+    text-align:left; font-size:0.7rem; letter-spacing:0.12em; text-transform:uppercase;
+    color: var(--text-faint); font-weight:600;
+    padding: var(--space-2) var(--space-4);
+    border-bottom:1px solid var(--line);
+    background: var(--surface);
+  }
+  .bom th.qty, .bom td.qty{ text-align:center; }
+  .bom th.amount, .bom td.amount{ text-align:right; }
+  .bom tbody td{ padding: var(--space-2) var(--space-4); border-bottom:1px solid var(--line); vertical-align:middle; }
+  .bom tbody tr:last-child td{ border-bottom:none; }
+  .bom tbody tr.group td{
+    font-size:0.7rem; letter-spacing:0.16em; text-transform:uppercase; font-weight:700;
+    color: var(--accent-dim);
+    background: color-mix(in oklch, var(--surface) 60%, transparent);
+    padding-top: var(--space-3); padding-bottom: var(--space-1);
+    border-bottom:1px solid var(--line);
+  }
+  .item-name{ font-weight:600; font-size:0.94rem; }
+  .item-spec{ font-size:0.76rem; color:var(--text-faint); }
+  .bom .price{ font-size:0.86rem; color:var(--text-dim); }
+  .bom .amount-val{ font-weight:700; font-family:var(--font-display); }
+
+  .qty-cell{ display:flex; align-items:center; gap:6px; justify-content:center; }
+  .qty-cell input{
+    width:62px; text-align:center; padding:6px 4px;
+    border:1px solid var(--line); border-radius: var(--radius-sm);
+    background: var(--surface); font-family:var(--font-display); font-weight:600; font-size:0.95rem;
+  }
+  .qty-cell input:focus{ border-color:var(--accent); outline:none; }
+  .qty-cell .mini{
+    width:30px; height:30px; border-radius:7px; font-size:1rem; font-weight:700;
+    background: var(--surface-2); border:1px solid var(--line); color:var(--text-dim);
+    transition: all .12s;
+  }
+  .qty-cell .mini:hover{ background:var(--accent); color:oklch(0.17 0.02 62); border-color:transparent; }
+  .auto-dot{ font-size:0.66rem; font-weight:600; letter-spacing:0.06em; padding:2px 6px; border-radius:6px; white-space:nowrap; }
+  .auto-dot.auto{ color:var(--text-faint); background: var(--surface-2); }
+  .auto-dot.custom{ color: var(--accent-strong); background: color-mix(in oklch, var(--accent) 16%, transparent); }
+  .auto-dot button{ margin-left:4px; font-size:0.66rem; color:var(--text-faint); text-decoration:underline; }
+
+  /* Summary section */
+  .summary{
+    margin: var(--space-7) 0 var(--space-8);
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-2);
+    padding: var(--space-5) clamp(16px, 3vw, 28px);
+  }
+  .summary-grid{ display:grid; grid-template-columns: 1fr; gap: var(--space-5); }
+  @media(min-width:860px){ .summary-grid{ grid-template-columns: 1fr 340px; } }
+  .sum-row{ display:flex; align-items:center; justify-content:space-between; gap: var(--space-4); padding: var(--space-2) 0; }
+  .sum-row + .sum-row{ border-top:1px dashed var(--line); }
+  .sum-row label{ color:var(--text-dim); font-size:0.95rem; }
+  .sum-row .v{ font-family:var(--font-display); font-weight:600; }
+  .sum-row.discount .v{ color: var(--danger); }
+  .sum-row.total .v{ color: var(--accent-strong); font-size:1.2rem; font-weight:700; }
+  .field{
+    display:flex; align-items:center; gap:10px; background:var(--surface-2);
+    border:1px solid var(--line); border-radius: var(--radius-sm); padding: 4px 10px;
+  }
+  .field span{ font-size:0.85rem; color:var(--text-dim); white-space:nowrap; }
+  .field input{
+    width:74px; background:transparent; border:none; text-align:right;
+    font-family:var(--font-display); font-weight:700; font-size:1rem;
+  }
+  .field input:focus{ outline:none; }
+  .field .suffix{ font-size:0.78rem; color:var(--text-faint); }
+  .summary-total-card{
+    background: var(--bg-soft); border:1px solid var(--line);
+    border-radius: var(--radius); padding: var(--space-5);
+    display:flex; flex-direction:column; gap: var(--space-2);
+  }
+  .summary-total-card .lbl{ font-size:0.74rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--text-faint); }
+  .summary-total-card .amt{ font-family:var(--font-display); font-size: clamp(2rem, 4vw, 2.6rem); font-weight:700; color:var(--accent-strong); line-height:1; }
+  .summary-total-card .sub{ font-size:0.82rem; color:var(--text-dim); }
+  .summary-total-card .btn{ margin-top: var(--space-3); justify-content:center; }
+
+  footer{ padding: var(--space-6) 0 var(--space-7); color:var(--text-faint); font-size:0.82rem; border-top:1px solid var(--line); }
+  footer .wrap{ display:flex; flex-wrap:wrap; gap: var(--space-2); justify-content:space-between; }
+
+  /* Toast */
+  .toast{
+    position:fixed; left:50%; bottom:28px; transform:translate(-50%, 16px);
+    background: var(--surface-2); color:var(--text);
+    border:1px solid var(--line); box-shadow: var(--shadow-2);
+    padding: 12px 20px; border-radius: 999px; font-size:0.9rem; font-weight:500;
+    opacity:0; pointer-events:none; transition: opacity .25s, transform .25s cubic-bezier(.22,1,.36,1);
+    z-index:100;
+  }
+  .toast.show{ opacity:1; transform:translate(-50%,0); }
+
+  /* motion */
+  @media (prefers-reduced-motion: no-preference){
+    .room{ animation: rise .5s cubic-bezier(.22,1,.36,1) both; }
+    .room:nth-child(2){ animation-delay:.05s } .room:nth-child(3){ animation-delay:.1s }
+    .room:nth-child(4){ animation-delay:.15s } .room:nth-child(5){ animation-delay:.2s }
+    @keyframes rise{ from{ opacity:0; transform:translateY(14px);} to{ opacity:1; transform:none;} }
+  }
+
+  /* ============ PRINT ============ */
+  /* PDF text-size presets — rem-rooted, so all rem-sized text scales together */
+  @media print{
+    html.print-full{ font-size:100%; }
+    html.print-half{ font-size:50%; }
+    html.print-third{ font-size:33.333%; }
+
+    body{ background:#fff; color:#000; }
+    .topbar, .room-actions, .steppers, .rack-strip, .hero, .section-head .hint,
+    .room-total small, .summary-total-card .btn, .icon-btn, .btn, .sel, .lang-seg{ display:none !important; }
+    .wrap{ max-width:100%; padding:0; }
+    /* long rooms may split across pages, but lines are never cropped */
+    .room{ box-shadow:none; border:1px solid #ccc; background:#fff; break-inside:auto; }
+    .room::before{ display:none; }
+    .room-head, .room-total{ break-inside:avoid; break-after:avoid; }
+    .bom{ border:1px solid #999; }
+    .bom thead th{ background:#eee; color:#000; }
+    .bom thead{ display:table-header-group; }
+    .bom tbody tr, tr{ break-inside:avoid; }
+    .section-head, .summary, .summary-total-card{ break-inside:avoid; break-after:avoid; }
+    .auto-dot{ display:none; }
+    .qty-cell input{ border:none; background:transparent; }
+    .qty-cell .mini{ display:none; }
+    .room-title input{ border:none; color:#000; }
+    .room-total strong{ color:#000; }
+
+    /* --- BOM rows: name + spec merged on one line, same size as the amount figure --- */
+    .bom tbody td:first-child .item-name,
+    .bom tbody td:first-child .item-spec{ display:inline; font-size:1em; }
+    .bom tbody td:first-child .item-name{ font-weight:600; color:#000; }
+    .bom tbody td:first-child .item-spec{ font-weight:400; color:#444; }
+    .bom tbody td:first-child .item-spec::before{ content:" · "; color:#666; }
+    .bom .price{ color:#333; }
+    .bom .amount-val{ color:#000; }
+    .bom td.qty span{ color:#444 !important; }
+    .bom tbody tr.group td{ color:#000 !important; background:#eee !important; border-bottom:1px solid #ccc !important; }
+
+    /* --- uniform text size across the whole printed PDF --- */
+    .room-title, .room-title input,
+    .chip, .chip b, .chip .u,
+    .room-total strong, .room-total strong small,
+    .bom thead th,
+    .bom tbody td, .bom tbody td span, .bom tbody td div,
+    .bom .price, .bom .amount-val, .item-name, .item-spec,
+    .bom tbody tr.group td,
+    .sum-row label, .sum-row .v, .sum-row input, .sum-row b,
+    .field span, .field .suffix,
+    .summary-total-card .lbl, .summary-total-card .amt, .summary-total-card .sub,
+    .section-head h2,
+    footer{ font-size:1em !important; }
+
+    /* --- black + visible grey only (no accent colours in PDF) --- */
+    .chip, .chip b, .chip .u{ color:#000 !important; }
+    .chip{ border-color:#999 !important; }
+    .grand-tag strong{ color:#000; }
+    .stat.accent b{ color:#000; }
+    .sum-row label, .summary-total-card .sub{ color:#333; }
+    .sum-row .v{ color:#000; }
+    .sum-row.discount .v{ color:#000; }
+    .sum-row.total .v{ color:#000; }
+    .summary-total-card .amt{ color:#000; }
+
+    .summary{ box-shadow:none; border:1px solid #999; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wrap topbar-inner">
+    <div class="brand">
+      <div class="brand-mark">MA</div>
+      <div>
+        <div class="brand-name" data-i18n="brandName">Quotation Desk</div>
+        <div class="brand-sub" data-i18n="brandSub">Martin Audio · AV Estimating</div>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <div class="lang-seg" id="lang-seg" role="group" aria-label="Language">
+        <button type="button" data-lang="en" title="English">EN</button>
+        <button type="button" data-lang="zh" title="中文">中文</button>
+      </div>
+      <select class="sel" id="pdf-size" data-i18n-title="pdfSizeTitle" title="PDF text size"></select>
+      <div class="grand-tag">
+        <small data-i18n="grandTag">Grand Total (USD)</small>
+        <strong id="grand-total">$0</strong>
+      </div>
+      <button class="icon-btn" id="theme-toggle" data-i18n-title="themeToggle" data-i18n-aria="themeToggle" title="Toggle theme" aria-label="Toggle light/dark theme">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="project-bar">
+      <span class="project-label" data-i18n="projectLabel">Project :</span>
+      <input id="project" class="project-input" type="text" spellcheck="false" autocomplete="off" data-i18n-ph="projectPh" placeholder="______________________________________________________" />
+    </div>
+    <h1 data-i18n-html="heroTitle">Martin Audio <em>Q-Series</em><br>Room Quotation Estimator</h1>
+    <p class="lede" data-i18n-html="lede">Rooms are categorized by size, driven by <b>Q15 — which must always be an even number</b>. Pick one of the 5 size categories, key in the room name, adjust Q15 / Q218 / Q118, and the amplifiers, processors, cabling and connectors are matched automatically — every value stays editable.</p>
+    <div class="stat-strip">
+      <div class="stat"><b id="s-rooms">0</b><span data-i18n="statRooms">Rooms</span></div>
+      <div class="stat"><b id="s-q15">0</b><span data-i18n="statQ15">Q15 Full-range</span></div>
+      <div class="stat"><b id="s-q218">0</b><span data-i18n="statQ218">Q218 Subs</span></div>
+      <div class="stat"><b id="s-q118">0</b><span data-i18n="statQ118">Q118 Subs</span></div>
+      <div class="stat accent"><b id="s-equip">$0</b><span data-i18n="statEquip">Equipment Subtotal</span></div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="section-head">
+    <h2 data-i18n="secRooms">Rooms</h2>
+    <div class="rule"></div>
+    <button class="btn btn-primary" id="add-room" data-i18n="addRoom">+ Add Room</button>
+    <button class="btn btn-ghost" id="export-csv" data-i18n="exportCsv">Export CSV</button>
+    <button class="btn btn-ghost" id="print-quote" data-i18n="printPdf">Print / PDF</button>
+  </div>
+
+  <section class="rooms" id="rooms"></section>
+
+  <section class="summary" id="summary">
+    <div class="section-head" style="margin:0 0 var(--space-4);">
+      <h2 data-i18n="secSummary">Project Summary</h2>
+      <div class="rule"></div>
+    </div>
+    <div class="summary-grid">
+      <div>
+        <div class="sum-row"><label data-i18n="sumEquip">Equipment subtotal</label><span class="v" id="sum-equip">$0</span></div>
+        <div class="sum-row discount"><label data-i18n="sumDisc">Trade discount</label>
+          <div class="field"><span>%</span><input type="number" id="discount" value="" min="0" max="100" placeholder="0"><span class="suffix" data-i18n="discOff">off — key in</span></div>
+        </div>
+        <div class="sum-row"><label data-i18n="sumDiscounted">Discounted equipment</label><span class="v" id="sum-discounted">$0</span></div>
+        <div class="sum-row"><label data-i18n="sumInstallLabel">Installation &amp; commissioning</label>
+          <div class="field"><span>$</span><input type="number" id="install-fee" value="500" min="0"><span class="suffix"><span data-i18n="perRoom">/ room</span> × <b id="room-count">0</b></span></div>
+        </div>
+        <div class="sum-row"><label data-i18n="sumInstallTotal">Install total</label><span class="v" id="sum-install">$0</span></div>
+        <div class="sum-row total"><label data-i18n="sumTotal">Order total (USD)</label><span class="v" id="sum-total">$0</span></div>
+      </div>
+      <div class="summary-total-card">
+        <span class="lbl" data-i18n="grandLbl">Grand Total · USD</span>
+        <span class="amt" id="grand-total-big">$0</span>
+        <span class="sub" id="grand-note"></span>
+        <button class="btn btn-primary" id="print-quote-2" data-i18n="printSavePdf">Print / Save as PDF</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span data-i18n="foot1">Amplifiers: DUAL2000 drives up to 2× Q218 or 2× Q118 · QUAD1300 drives up to 4× Q15 · Q15 always even. Processors matched by channel capacity: DX0.4 = 4-ch, DX0.6 = 6-ch, added alternately (4 → 10 → 14 → 20 …) — e.g. 4 speakers need 1× DX0.4 only · 5 room-size categories.</span>
+    <span data-i18n="foot2">Prices ex-tax · Martin Audio factory warranty 1 year · VAT invoice +10%.</span>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* ================= DATA ================= */
+const PRICES = {
+  Q15:2568, Q218:4275, Q118:2139,
+  QUAD:1800, DUAL:1800, DX04:1300, DX06:1700,
+  DSP:500, MIC:700, SEQ:400, RACK:500,
+  NL4:5, XLR:5, RCA:2,
+  CSIG:3, CFULL:7, CSUB:8,
+  INSTALL:400
+};
+
+/* ================= I18N (EN / ZH) ================= */
+const I18N = {
+  en: {
+    brandName:'Quotation Desk', brandSub:'Martin Audio · AV Estimating',
+    grandTag:'Grand Total (USD)', themeToggle:'Toggle theme', pdfSizeTitle:'PDF text size',
+    projectLabel:'Project :', projectPh:'______________________________________________________',
+    heroTitle:'Martin Audio <em>Q-Series</em><br>Room Quotation Estimator',
+    lede:'Rooms are categorized by size, driven by <b>Q15 — which must always be an even number</b>. Pick one of the 5 size categories, key in the room name, adjust Q15 / Q218 / Q118, and the amplifiers, processors, cabling and connectors are matched automatically — every value stays editable.',
+    statRooms:'Rooms', statQ15:'Q15 Full-range', statQ218:'Q218 Subs', statQ118:'Q118 Subs', statEquip:'Equipment Subtotal',
+    secRooms:'Rooms', addRoom:'+ Add Room', exportCsv:'Export CSV', printPdf:'Print / PDF',
+    pdfOptFull:'Full size', pdfOptHalf:'½ size', pdfOptThird:'⅓ size (small)',
+    secSummary:'Project Summary',
+    sumEquip:'Equipment subtotal', sumDisc:'Trade discount', discOff:'off — key in',
+    sumDiscounted:'Discounted equipment', sumInstallLabel:'Installation & commissioning',
+    perRoom:'/ room', sumInstallTotal:'Install total', sumTotal:'Order total (USD)',
+    grandLbl:'Grand Total · USD', printSavePdf:'Print / Save as PDF',
+    foot1:'Amplifiers: DUAL2000 drives up to 2× Q218 or 2× Q118 · QUAD1300 drives up to 4× Q15 · Q15 always even. Processors matched by channel capacity: DX0.4 = 4-ch, DX0.6 = 6-ch, added alternately (4 → 10 → 14 → 20 …) — e.g. 4 speakers need 1× DX0.4 only · 5 room-size categories.',
+    foot2:'Prices ex-tax · Martin Audio factory warranty 1 year · VAT invoice +10%.',
+    roomNameAria:'Room name', chipSize:'size', roomTotal:'Room total · USD',
+    btnDuplicate:'Duplicate', btnReset:'Reset', btnDelete:'Delete',
+    decAria:'decrease', incAria:'increase',
+    specQ15:'8Ω · full-range', specQ218:'4Ω · dual 18" sub', specQ118:'8Ω · single 18" sub',
+    item:'Item', qty:'Qty', unit:'Unit', unitPrice:'Unit price', amount:'Amount',
+    unitPrefix:'Unit', evenOnly:' · even only', usd:'USD',
+    autoTag:'Auto-matched', auto:'auto', custom:'custom', reset:'reset',
+    'Speakers':'Speakers', 'Amplification':'Amplification', 'Processing & Rack':'Processing & Rack', 'Cabling & Connectors':'Cabling & Connectors',
+    specQ15r:'Martin Audio BLACKLINE Q15 · 8Ω · 800W AES · full-range',
+    specQ218r:'Martin Audio BLACKLINE Q218 · 4Ω · 1600W AES · dual-18" sub',
+    specQ118r:'Martin Audio Blackline Q118 · 8Ω · 800W AES · single-18" sub',
+    specQuad:'WATT Technologies · 4-ch power amplifier',
+    specDual:'WATT Technologies · 2-ch power amplifier',
+    specDx04:'Martin Audio · 2-in 4-out processor · 4-ch output drives up to 4 speakers',
+    specDx06:'Martin Audio · 2-in 6-out processor · 6-ch output drives up to 6 speakers',
+    specDsp:'Digital DSP preamp / effects',
+    specMic:'BBS wireless handheld mic (dual)',
+    specSeq:'8-out power sequencer',
+    specRack:'Equipment rack',
+    specNl4:'REAN · 4-pole speaker plug',
+    specXlr:'REAN · NC3FXX / NC3MXX',
+    specRca:'REAN NF2C · gold-plated',
+    specSig:'2-core shielded mic cable',
+    specFull:'2-core 2.5mm² speaker cable',
+    specSub:'2-core 4mm² speaker cable',
+    specInstall:'Plugs, hangers, fixings — one lot',
+    unitPc:'pc', unitSet:'set', unitPr:'pr', unitM:'m', unitLot:'lot',
+    tplRoom:'Room · ', sz0:'—', sz25:'25-30 m²', sz35:'35-40 m²', sz60:'60-75 m²', sz80:'80-100 m²', sz110:'110 m²+',
+    toastAdd:'Room added · 60-75 m² default', toastKeep:'Keep at least one room',
+    toastDel:'Room deleted', toastReset:'Room reset to auto-match', toastDup:'Room duplicated', toastCsv:'CSV exported',
+    csvHeader:['Room','Item','Model','Spec','Unit','Qty','Unit Price (USD)','Amount (USD)'],
+    grandNote:(n,equip,d,i)=>`${n} room${n>1?'s':''} · equipment ${equip} − ${d}% + install ${i}`
+  },
+  zh: {
+    brandName:'报价工作台', brandSub:'Martin Audio · AV 估算',
+    grandTag:'总价 (USD)', themeToggle:'切换主题', pdfSizeTitle:'PDF 文字大小',
+    projectLabel:'项目 :', projectPh:'______________________________________________________',
+    heroTitle:'Martin Audio <em>Q-Series</em><br>房间报价估算器',
+    lede:'房间按面积分类，以 <b>Q15 —— 必须始终为偶数</b> 为准。从 5 种尺寸类别中选择，输入房间名称，调整 Q15 / Q218 / Q118，功放、处理器、线缆与连接器将自动匹配 —— 每个数值仍可手动编辑。',
+    statRooms:'房间数', statQ15:'Q15 全频', statQ218:'Q218 低音', statQ118:'Q118 低音', statEquip:'设备小计',
+    secRooms:'房间', addRoom:'+ 添加房间', exportCsv:'导出 CSV', printPdf:'打印 / PDF',
+    pdfOptFull:'全尺寸', pdfOptHalf:'½ 尺寸', pdfOptThird:'⅓ 尺寸（小字）',
+    secSummary:'项目汇总',
+    sumEquip:'设备小计', sumDisc:'贸易折扣', discOff:'折扣 — 输入',
+    sumDiscounted:'折扣后设备价', sumInstallLabel:'安装与调试',
+    perRoom:'/ 每间', sumInstallTotal:'安装合计', sumTotal:'订单合计 (USD)',
+    grandLbl:'总计 · USD', printSavePdf:'打印 / 保存为 PDF',
+    foot1:'功放：DUAL2000 最多驱动 2× Q218 或 2× Q118 · QUAD1300 最多驱动 4× Q15 · Q15 必须为偶数。处理器按通道容量匹配：DX0.4 = 4 通道，DX0.6 = 6 通道，交替累加（4 → 10 → 14 → 20 …）—— 例如 4 只音箱仅需 1× DX0.4 · 共 5 档房间尺寸类别。',
+    foot2:'价格不含税 · Martin Audio 原厂保修 1 年 · 含增值税发票 +10%。',
+    roomNameAria:'房间名称', chipSize:'面积', roomTotal:'房间小计 · USD',
+    btnDuplicate:'复制', btnReset:'重置', btnDelete:'删除',
+    decAria:'减少', incAria:'增加',
+    specQ15:'8Ω · 全频', specQ218:'4Ω · 双 18" 低音', specQ118:'8Ω · 单 18" 低音',
+    item:'项目', qty:'数量', unit:'单位', unitPrice:'单价', amount:'金额',
+    unitPrefix:'单价', evenOnly:' · 仅偶数', usd:'USD',
+    autoTag:'自动匹配', auto:'自动', custom:'自定义', reset:'重置',
+    'Speakers':'音箱', 'Amplification':'功放', 'Processing & Rack':'处理与机柜', 'Cabling & Connectors':'线缆与连接器',
+    specQ15r:'Martin Audio BLACKLINE Q15 · 8Ω · 800W AES · 全频',
+    specQ218r:'Martin Audio BLACKLINE Q218 · 4Ω · 1600W AES · 双 18" 低音',
+    specQ118r:'Martin Audio Blackline Q118 · 8Ω · 800W AES · 单 18" 低音',
+    specQuad:'WATT Technologies · 4 通道功率放大器',
+    specDual:'WATT Technologies · 2 通道功率放大器',
+    specDx04:'Martin Audio · 2 进 4 出处理器 · 4 路输出最多驱动 4 只音箱',
+    specDx06:'Martin Audio · 2 进 6 出处理器 · 6 路输出最多驱动 6 只音箱',
+    specDsp:'数字 DSP 前级 / 效果器',
+    specMic:'BBS 无线手持话筒（双通道）',
+    specSeq:'8 路电源时序器',
+    specRack:'设备机柜',
+    specNl4:'REAN · 4 芯音箱插头',
+    specXlr:'REAN · NC3FXX / NC3MXX',
+    specRca:'REAN NF2C · 镀金',
+    specSig:'2 芯屏蔽麦克风线缆',
+    specFull:'2 芯 2.5mm² 音箱线缆',
+    specSub:'2 芯 4mm² 音箱线缆',
+    specInstall:'插头、吊架、紧固件 — 一批',
+    unitPc:'台', unitSet:'套', unitPr:'对', unitM:'米', unitLot:'批',
+    tplRoom:'房间 · ', sz0:'—', sz25:'25-30 m²', sz35:'35-40 m²', sz60:'60-75 m²', sz80:'80-100 m²', sz110:'110 m²+',
+    toastAdd:'已添加房间 · 默认 60-75 m²', toastKeep:'至少保留一个房间',
+    toastDel:'房间已删除', toastReset:'房间已重置为自动匹配', toastDup:'房间已复制', toastCsv:'CSV 已导出',
+    csvHeader:['房间','项目','型号','规格','单位','数量','单价 (USD)','金额 (USD)'],
+    grandNote:(n,equip,d,i)=>`${n} 个房间 · 设备 ${equip} − ${d}% + 安装 ${i}`
+  }
+};
+let LANG = 'en';
+const t = k => (I18N[LANG] && k in I18N[LANG]) ? I18N[LANG][k] : I18N.en[k];
+
+function setLang(l){
+  LANG = (l==='zh') ? 'zh' : 'en';
+  try{ localStorage.setItem('ma-quote-lang', LANG); }catch(e){}
+  document.documentElement.setAttribute('lang', LANG==='zh' ? 'zh-CN' : 'en');
+  document.querySelectorAll('#lang-seg button').forEach(b=> b.classList.toggle('on', b.dataset.lang===LANG));
+  applyI18n();
+  render();
+}
+function applyI18n(){
+  document.querySelectorAll('[data-i18n]').forEach(el=>{ el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{ el.innerHTML = t(el.dataset.i18nHtml); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el=>{ el.placeholder = t(el.dataset.i18nPh); });
+  document.querySelectorAll('[data-i18n-title]').forEach(el=>{ el.title = t(el.dataset.i18nTitle); });
+  document.querySelectorAll('[data-i18n-aria]').forEach(el=>{ el.setAttribute('aria-label', t(el.dataset.i18nAria)); });
+  const sel = document.getElementById('pdf-size');
+  if(sel){
+    const saved = localStorage.getItem('ma-pdf-size') || 'full';
+    sel.innerHTML = ['full','half','third'].map(v=>`<option value="${v}">PDF · ${t('pdfOpt'+v[0].toUpperCase()+v.slice(1))}</option>`).join('');
+    sel.value = saved;
+  }
+}
+function doPrint(){
+  const s = localStorage.getItem('ma-pdf-size') || 'full';
+  document.documentElement.classList.toggle('print-full', s==='full');
+  document.documentElement.classList.toggle('print-half', s==='half');
+  document.documentElement.classList.toggle('print-third', s==='third');
+  window.print();
+}
+window.addEventListener('afterprint', ()=>{
+  document.documentElement.classList.remove('print-full','print-half','print-third');
+});
+
+/* Fixed standard rack items present in every room */
+const FIXED = [
+  {key:'dx04',  label:'DX0.4',   spec:'Martin Audio · 2-in 4-out digital processor', unit:'pc', price:1300, dflt:1},
+  {key:'dx06',  label:'DX0.6',   spec:'Martin Audio · 2-in 6-out digital processor', unit:'pc', price:1700, dflt:1},
+  {key:'dsp',   label:'ALLDSP2', spec:'WATT Technologies · digital DSP preamp',      unit:'pc', price:500,  dflt:1},
+  {key:'mic',   label:'NX-8 PRO',spec:'BBS · wireless handheld mic set',              unit:'set',price:700,  dflt:1},
+  {key:'seq',   label:'Sequencer 16+', spec:'WATT Technologies · power sequencer',   unit:'pc', price:400,  dflt:1},
+  {key:'rack',  label:'12U Rack',spec:'Superlux · amp rack',                          unit:'pc', price:500,  dflt:1},
+  {key:'install',label:'Install accessories', spec:'Plugs, hangers, fixings — one lot', unit:'lot', price:400, dflt:1}
+];
+
+/* Auto-match rules — reproduce the original V1 sheet for all 5 rooms */
+function autoMatch(r){
+  const q15=r.q15, q218=r.q218, q118=r.q118, total=q15+q218+q118;
+  /* Processors by channel capacity: DX0.4 = 4ch, DX0.6 = 6ch.
+     Alternate 4 → 10 → 14 → 20 … until channels cover the speaker total. */
+  let d04=0,d06=0,cap=0,add4=true;
+  while(total>0 && cap<total){ if(add4){ d04++; cap+=4; } else { d06++; cap+=6; } add4=!add4; }
+  return {
+    quad:  q15>0 ? Math.max(1, Math.ceil(q15/4)) : 0,
+    dual:  Math.ceil(q218/2) + Math.ceil(q118/2),
+    nl4:   2*total,
+    xlr:   total>11 ? 16 : 14,
+    rca:   8,
+    sig:   100 + (q118>0?50:0) + (q218>=4?50:0),
+    full:  25*q15 + (q218>=4?100:0) + (q118>0?50:0) + (q15>=8?50:0),
+    sub:   Math.max(0, 50*(q218-2) + (q118>0?100:0) + (q15>=8?50:0) + (q218>=4?50:0)),
+    dx04:  d04,
+    dx06:  d06,
+    dsp:1, mic:1, seq:1, rack:1, install:1
+  };
+}
+
+/* ================= STATE ================= */
+let rooms = [];
+let uid = 1;
+const LS_KEY = 'ma-quote-estimator-v2';
+
+/* 5 room-size categories — Q15 defines the room size */
+function sizeOf(q15){
+  if(q15<=0) return t('sz0');
+  if(q15<=2) return t('sz25');
+  if(q15<=4) return t('sz35');
+  if(q15<=6) return t('sz60');
+  if(q15<=8) return t('sz80');
+  return t('sz110');
+}
+const TEMPLATES = [
+  {name:t('tplRoom')+'25-30 m²',  q:{q15:2,  q218:1, q118:0}},
+  {name:t('tplRoom')+'35-40 m²',  q:{q15:4,  q218:2, q118:0}},
+  {name:t('tplRoom')+'60-75 m²',  q:{q15:6,  q218:3, q118:0}},
+  {name:t('tplRoom')+'80-100 m²', q:{q15:8,  q218:4, q118:2}},
+  {name:t('tplRoom')+'110 m²+',   q:{q15:10, q218:5, q118:2}}
+];
+const evenN = v => Math.max(0, Math.round(v/2)*2);
+
+function freshRoom(tpl){
+  const t = tpl || TEMPLATES[2];
+  return { id:uid++, name:t.name, size:sizeOf(t.q.q15),
+           q:{q15:evenN(t.q.q15), q218:t.q.q218, q118:t.q.q118}, ov:{} };
+}
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    if(raw){ const d=JSON.parse(raw); rooms=d.rooms||[]; uid=(d.uid||rooms.length)+1; if(rooms.length) return; }
+  }catch(e){}
+  rooms = TEMPLATES.map(freshRoom);
+}
+function saveState(){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify({rooms, uid})); }catch(e){}
+}
+
+/* value for a row key: override wins, else auto */
+function valOf(room, key){
+  const auto = autoMatch(room.q);
+  return (key in room.ov) ? room.ov[key] : auto[key];
+}
+function isAuto(room, key){
+  return !(key in room.ov) || room.ov[key] === autoMatch(room.q)[key];
+}
+
+/* ================= BUILD BOM ================= */
+function buildRows(room){
+  const q = room.q;
+  const it = (g,key,name,specKey,unitKey,qty,price)=> ({g:t(g), key, name, spec:t(specKey), unit:t(unitKey), qty, price});
+  const rows = [];
+  rows.push(it('Speakers','q15','Q15','specQ15r','unitPc',q.q15,PRICES.Q15));
+  rows.push(it('Speakers','q218','Q218','specQ218r','unitPc',q.q218,PRICES.Q218));
+  rows.push(it('Speakers','q118','Q118','specQ118r','unitPc',q.q118,PRICES.Q118));
+  rows.push(it('Amplification','quad','Quad 1300','specQuad','unitPc',valOf(room,'quad'),PRICES.QUAD));
+  rows.push(it('Amplification','dual','DUAL2000','specDual','unitPc',valOf(room,'dual'),PRICES.DUAL));
+  rows.push(it('Processing & Rack','dx04','DX0.4','specDx04','unitPc',valOf(room,'dx04'),PRICES.DX04));
+  rows.push(it('Processing & Rack','dx06','DX0.6','specDx06','unitPc',valOf(room,'dx06'),PRICES.DX06));
+  rows.push(it('Processing & Rack','dsp','ALLDSP2','specDsp','unitPc',valOf(room,'dsp'),PRICES.DSP));
+  rows.push(it('Processing & Rack','mic','NX-8 PRO','specMic','unitSet',valOf(room,'mic'),PRICES.MIC));
+  rows.push(it('Processing & Rack','seq','Sequencer 16+','specSeq','unitPc',valOf(room,'seq'),PRICES.SEQ));
+  rows.push(it('Processing & Rack','rack','12U Rack','specRack','unitPc',valOf(room,'rack'),PRICES.RACK));
+  rows.push(it('Cabling & Connectors','nl4','NL4FX speakon','specNl4','unitPc',valOf(room,'nl4'),PRICES.NL4));
+  rows.push(it('Cabling & Connectors','xlr','XLR pair','specXlr','unitPr',valOf(room,'xlr'),PRICES.XLR));
+  rows.push(it('Cabling & Connectors','rca','RCA plug','specRca','unitPc',valOf(room,'rca'),PRICES.RCA));
+  rows.push(it('Cabling & Connectors','sig','Signal cable','specSig','unitM',valOf(room,'sig'),PRICES.CSIG));
+  rows.push(it('Cabling & Connectors','full','Full-range cable','specFull','unitM',valOf(room,'full'),PRICES.CFULL));
+  rows.push(it('Cabling & Connectors','sub','Sub cable','specSub','unitM',valOf(room,'sub'),PRICES.CSUB));
+  rows.push(it('Cabling & Connectors','install','Install accessories','specInstall','unitLot',valOf(room,'install'),PRICES.INSTALL));
+  return rows;
+}
+function roomTotal(rows){ return rows.reduce((s,r)=> s + r.qty*r.price, 0); }
+
+/* ================= RENDER ================= */
+const fmt = n => '$' + Math.round(n).toLocaleString('en-US');
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function roomHTML(r){
+  const rows = buildRows(r);
+  const a = autoMatch(r.q);
+  const total = roomTotal(rows);
+  const autoBadge = (key) =>
+    `<span class="auto-dot ${isAuto(r,key)?'auto':'custom'}" data-akey="${key}">` +
+    (isAuto(r,key) ? t('auto') : t('custom')) +
+    (isAuto(r,key)?'':` <button data-revert="${key}">${t('reset')}</button>`) +
+    `</span>`;
+
+  let table='', lastG=null;
+  for(const row of rows){
+    if(row.g!==lastG){ table+=`<tr class="group"><td colspan="5">${row.g}</td></tr>`; lastG=row.g; }
+    const amount = row.qty*row.price;
+    table+=`
+    <tr data-key="${row.key}">
+      <td><div class="item-name">${row.name}</div><div class="item-spec">${row.spec}</div></td>
+      <td class="qty">
+        <div class="qty-cell">
+          <button class="mini" data-dec="${row.key}" aria-label="decrease">−</button>
+          <input type="number" min="0" step="1" data-q="${row.key}" value="${row.qty}">
+          <button class="mini" data-inc="${row.key}" aria-label="increase">+</button>
+        </div>
+        <div style="margin-top:3px">${autoBadge(row.key)}</div>
+      </td>
+      <td class="qty"><span style="color:var(--text-faint);font-size:0.8rem">${row.unit}</span></td>
+      <td class="amount price"><span class="price">${row.price.toLocaleString('en-US')}</span></td>
+      <td class="amount"><span class="amount-val" data-amt="${row.key}">${fmt(amount)}</span></td>
+    </tr>`;
+  }
+
+  return `
+  <article class="room" data-id="${r.id}">
+    <div class="room-head">
+      <span class="room-title"><input data-room-name value="${esc(r.name)}" aria-label="${t('roomNameAria')}"></span>
+      <span class="chip" style="border-color:var(--accent-dim);color:var(--accent-strong)"><b>${sizeOf(r.q.q15)}</b><span class="u">${t('chipSize')}</span></span>
+      <span class="chip"><b>${r.q.q15}</b><span class="u">Q15</span></span>
+      <span class="chip"><b>${r.q.q218}</b><span class="u">Q218</span></span>
+      <span class="chip"><b>${r.q.q118}</b><span class="u">Q118</span></span>
+      <div class="room-total"><small>${t('roomTotal')}</small><strong data-room-total>${fmt(total)}</strong></div>
+      <div class="room-actions">
+        <button class="btn btn-ghost btn-sm" data-dup-room>${t('btnDuplicate')}</button>
+        <button class="btn btn-ghost btn-sm" data-reset-room title="${t('reset')}">${t('btnReset')}</button>
+        <button class="btn btn-danger btn-sm" data-del-room>${t('btnDelete')}</button>
+      </div>
+    </div>
+
+    <div class="steppers">
+      ${[['q15','Q15',t('specQ15')],['q218','Q218',t('specQ218')],['q118','Q118',t('specQ118')]].map(([k,nm,spec])=>`
+      <div class="step">
+        <div class="step-label"><span class="name">${nm}</span><span class="model">${spec}</span></div>
+        <div class="step-ctl">
+          <button data-step-dec="${k}" aria-label="${t('decAria')} ${nm}">−</button>
+          <output data-step="${k}">${r.q[k]}</output>
+          <button data-step-inc="${k}" aria-label="${t('incAria')} ${nm}">+</button>
+        </div>
+        <div class="step-sub">${t('unitPrefix')} <b>${PRICES[nm.toUpperCase()].toLocaleString('en-US')} USD</b>${k==='q15'?t('evenOnly'):''}</div>
+      </div>`).join('')}
+    </div>
+
+    <div class="rack-strip">
+      <span class="tag">${t('autoTag')}</span>
+      <span class="chip"><b>${valOf(r,'quad')}</b><span class="u">× Quad 1300</span></span>
+      <span class="chip"><b>${valOf(r,'dual')}</b><span class="u">× DUAL2000</span></span>
+      <span class="chip"><b>${valOf(r,'dx04')}</b><span class="u">× DX0.4</span></span>
+      <span class="chip"><b>${valOf(r,'dx06')}</b><span class="u">× DX0.6</span></span>
+      <span class="chip"><b>${valOf(r,'nl4')}</b><span class="u">× NL4 speakon</span></span>
+      <span class="chip"><b>${valOf(r,'xlr')}</b><span class="u">× XLR pr</span></span>
+      <span class="chip"><b>${valOf(r,'sig')}m</b><span class="u">signal</span></span>
+      <span class="chip"><b>${valOf(r,'full')}m</b><span class="u">full-range</span></span>
+      <span class="chip"><b>${valOf(r,'sub')}m</b><span class="u">sub</span></span>
+    </div>
+
+    <div class="bom">
+      <table>
+        <thead><tr><th style="width:38%">${t('item')}</th><th class="qty">${t('qty')}</th><th>${t('unit')}</th><th class="amount">${t('unitPrice')}</th><th class="amount">${t('amount')}</th></tr></thead>
+        <tbody>${table}</tbody>
+      </table>
+    </div>
+  </article>`;
+}
+
+function render(){
+  const host = document.getElementById('rooms');
+  host.innerHTML = rooms.map(roomHTML).join('');
+
+  /* stats */
+  let t15=0,t218=0,t118=0;
+  rooms.forEach(r=>{ t15+=r.q.q15; t218+=r.q.q218; t118+=r.q.q118; });
+  const equip = rooms.reduce((s,r)=> s + roomTotal(buildRows(r)), 0);
+  document.getElementById('s-rooms').textContent = rooms.length;
+  document.getElementById('s-q15').textContent = t15;
+  document.getElementById('s-q218').textContent = t218;
+  document.getElementById('s-q118').textContent = t118;
+  document.getElementById('s-equip').textContent = fmt(equip);
+
+  /* summary */
+  const disc = clampPct(document.getElementById('discount').value);
+  const fee = Number(document.getElementById('install-fee').value)||0;
+  const discounted = equip*(1-disc/100);
+  const install = fee*rooms.length;
+  const grand = discounted+install;
+  document.getElementById('sum-equip').textContent = fmt(equip);
+  document.getElementById('sum-discounted').textContent = fmt(discounted);
+  document.getElementById('sum-install').textContent = fmt(install);
+  document.getElementById('sum-total').textContent = fmt(grand);
+  document.getElementById('grand-total').textContent = fmt(grand);
+  document.getElementById('grand-total-big').textContent = fmt(grand);
+  document.getElementById('room-count').textContent = rooms.length;
+  document.getElementById('grand-note').textContent =
+    I18N[LANG].grandNote(rooms.length, fmt(equip), disc, fmt(install));
+  saveState();
+}
+
+function clampPct(v){ const n=Number(v); if(isNaN(n)) return 0; return Math.min(100, Math.max(0, n)); }
+
+function updateRoom(r){
+  const el = document.querySelector(`.room[data-id="${r.id}"]`);
+  if(el){
+    const tmp = document.createElement('div');
+    tmp.innerHTML = roomHTML(r);
+    el.replaceWith(tmp.firstElementChild);
+  }
+  render();
+}
+function toast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'), 1800);
+}
+
+/* ================= EVENTS ================= */
+document.addEventListener('click', e=>{
+  const roomEl = e.target.closest('.room');
+  const id = roomEl ? Number(roomEl.dataset.id) : null;
+  const r = rooms.find(x=>x.id===id);
+
+  /* room actions */
+  if(e.target.closest('#add-room')){
+    rooms.push(freshRoom()); render(); toast(t('toastAdd'));
+    document.querySelector('.room:last-of-type').scrollIntoView({behavior:'smooth', block:'start'});
+    return;
+  }
+  if(e.target.closest('#export-csv')){ exportCSV(); return; }
+  if(e.target.closest('#lang-seg button')){ setLang(e.target.closest('#lang-seg button').dataset.lang); return; }
+  if(e.target.closest('#print-quote') || e.target.closest('#print-quote-2')){ doPrint(); return; }
+  if(e.target.closest('#theme-toggle')){
+    const cur = document.documentElement.getAttribute('data-theme');
+    document.documentElement.setAttribute('data-theme', cur==='dark'?'light':'dark');
+    return;
+  }
+  if(!r) return;
+
+  if(e.target.closest('[data-del-room]')){
+    if(rooms.length<=1){ toast(t('toastKeep')); return; }
+    rooms = rooms.filter(x=>x.id!==id); render(); toast(t('toastDel'));
+    return;
+  }
+  if(e.target.closest('[data-reset-room]')){
+    r.ov = {}; updateRoom(r); toast(t('toastReset'));
+    return;
+  }
+  if(e.target.closest('[data-dup-room]')){
+    const copy = freshRoom({name:r.name+' copy', q:{...r.q}});
+    copy.ov = {...r.ov};
+    rooms.push(copy); render(); toast(t('toastDup'));
+    document.querySelector(`.room[data-id="${copy.id}"]`).scrollIntoView({behavior:'smooth', block:'start'});
+    return;
+  }
+
+  /* steppers (speakers) */
+  const stepInc = e.target.closest('[data-step-inc]');
+  const stepDec = e.target.closest('[data-step-dec]');
+  if(stepInc||stepDec){
+    const k = (stepInc||stepDec).dataset.stepInc||(stepInc||stepDec).dataset.stepDec;
+    const d = stepInc?1:-1;
+    r.q[k] = (k==='q15') ? Math.max(0, Math[d>0?'ceil':'floor'](((r.q[k]||0)+d)/2)*2) : Math.max(0, (r.q[k]||0)+d);
+    updateRoom(r);
+    return;
+  }
+  /* qty table buttons */
+  const inc = e.target.closest('[data-inc]');
+  const dec = e.target.closest('[data-dec]');
+  if(inc||dec){
+    const k=(inc||dec).dataset.inc||(inc||dec).dataset.dec;
+    const auto = autoMatch(r.q)[k];
+    let v = valOf(r,k) + (inc?1:-1);
+    v = Math.max(0, v);
+    r.ov[k] = v;
+    if(v===auto) delete r.ov[k];
+    updateRoom(r);
+    return;
+  }
+  /* revert custom */
+  const rv = e.target.closest('[data-revert]');
+  if(rv){
+    const k = rv.closest('.auto-dot').dataset.akey;
+    delete r.ov[k];
+    updateRoom(r);
+    return;
+  }
+});
+
+document.addEventListener('input', e=>{
+  if(e.target.matches('[data-room-name]')){
+    const r = rooms.find(x=>x.id===Number(e.target.closest('.room').dataset.id));
+    if(r){ r.name = e.target.value; saveState(); }
+    return;
+  }
+  if(e.target.matches('[data-q]')){
+    const roomEl=e.target.closest('.room'); const r=rooms.find(x=>x.id===Number(roomEl.dataset.id));
+    const k=e.target.dataset.q; const auto=autoMatch(r.q)[k];
+    let v = parseInt(e.target.value,10); if(isNaN(v)||v<0) v=0;
+    if(k==='q15') v = evenN(v);
+    r.ov[k]=v; if(v===auto) delete r.ov[k];
+    if(['q15','q218','q118'].includes(k)){ r.q[k]=v; }
+    updateRoom(r);
+    return;
+  }
+  if(e.target.matches('#discount') || e.target.matches('#install-fee')){ render(); }
+});
+
+document.addEventListener('change', e=>{
+  if(e.target.matches('#pdf-size')){
+    try{ localStorage.setItem('ma-pdf-size', e.target.value); }catch(err){}
+    return;
+  }
+  if(e.target.matches('[data-q]')){
+    const roomEl=e.target.closest('.room'); const r=rooms.find(x=>x.id===Number(roomEl.dataset.id));
+    const k=e.target.dataset.q; const v=parseInt(e.target.value,10)||0;
+    if(v<0) e.target.value=0;
+    return;
+  }
+});
+
+/* ================= CSV ================= */
+function exportCSV(){
+  const lines = [t('csvHeader')];
+  rooms.forEach(r=>{
+    buildRows(r).forEach(row=>{
+      lines.push([r.name,row.g,row.name,row.spec,row.unit,row.qty,row.price,row.qty*row.price]);
+    });
+  });
+  const csv = lines.map(l=>l.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const blob = new Blob(['\ufeff'+csv], {type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='Martin-Audio-Room-Quotation.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast(t('toastCsv'));
+}
+
+/* ================= INIT ================= */
+loadState();
+try{ LANG = localStorage.getItem('ma-quote-lang')==='zh' ? 'zh':'en'; }catch(e){}
+setLang(LANG);
+(function(){
+  const el=document.getElementById('project');
+  if(!el) return;
+  el.value = localStorage.getItem('ma-quote-project') || '';
+  el.addEventListener('input', ()=>{ localStorage.setItem('ma-quote-project', el.value); });
+})();
+</script>
+</body>
+</html>
