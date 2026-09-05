@@ -687,9 +687,12 @@ const FIXED = [
 function autoMatch(r){
   const q15=r.q15, q218=r.q218, q118=r.q118, total=q15+q218+q118;
   /* Processors by channel capacity: DX0.4 = 4ch, DX0.6 = 6ch.
-     Alternate 4 → 10 → 14 → 20 … until channels cover the speaker total. */
-  let d04=0,d06=0,cap=0,add4=true;
-  while(total>0 && cap<total){ if(add4){ d04++; cap+=4; } else { d06++; cap+=6; } add4=!add4; }
+     Prefer DX0.6 (6ch) to cover every full 6 speakers, then top up
+     the remainder with DX0.4 (4ch). e.g. 6 spk -> 1x DX0.6, 0x DX0.4;
+     4 spk -> 1x DX0.4; 10 spk -> 1x DX0.6 + 1x DX0.4. */
+  const d06 = total>0 ? Math.floor(total/6) : 0;
+  const rem = total - d06*6;
+  const d04 = rem>0 ? Math.ceil(rem/4) : 0;
   return {
     quad:  q15>0 ? Math.max(1, Math.ceil(q15/4)) : 0,
     dual:  Math.ceil(q218/2) + Math.ceil(q118/2),
