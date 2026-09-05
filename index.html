@@ -901,6 +901,47 @@ function render(){
 
 function clampPct(v){ const n=Number(v); if(isNaN(n)) return 0; return Math.min(100, Math.max(0, n)); }
 
+/* light refresh: update amounts/totals/stats WITHOUT rebuilding room DOM,
+   so typing in qty inputs never loses focus. Full re-render happens on blur. */
+function refreshTotals(){
+  rooms.forEach(r=>{
+    const rows = buildRows(r);
+    const el = document.querySelector(`.room[data-id="${r.id}"]`);
+    if(!el) return;
+    rows.forEach(row=>{
+      const a = el.querySelector(`.amount-val[data-amt="${row.key}"]`);
+      if(a) a.textContent = fmt(row.qty*row.price);
+    });
+    const tt = el.querySelector('[data-room-total]');
+    if(tt) tt.textContent = fmt(roomTotal(rows));
+  });
+  /* stats */
+  let t15=0,t218=0,t118=0;
+  rooms.forEach(r=>{ t15+=r.q.q15; t218+=r.q.q218; t118+=r.q.q118; });
+  const equip = rooms.reduce((s,r)=> s + roomTotal(buildRows(r)), 0);
+  document.getElementById('s-rooms').textContent = rooms.length;
+  document.getElementById('s-q15').textContent = t15;
+  document.getElementById('s-q218').textContent = t218;
+  document.getElementById('s-q118').textContent = t118;
+  document.getElementById('s-equip').textContent = fmt(equip);
+  /* summary */
+  const disc = clampPct(document.getElementById('discount').value);
+  const fee = Number(document.getElementById('install-fee').value)||0;
+  const discounted = equip*(1-disc/100);
+  const install = fee*rooms.length;
+  const grand = discounted+install;
+  document.getElementById('sum-equip').textContent = fmt(equip);
+  document.getElementById('sum-discounted').textContent = fmt(discounted);
+  document.getElementById('sum-install').textContent = fmt(install);
+  document.getElementById('sum-total').textContent = fmt(grand);
+  document.getElementById('grand-total').textContent = fmt(grand);
+  document.getElementById('grand-total-big').textContent = fmt(grand);
+  document.getElementById('room-count').textContent = rooms.length;
+  document.getElementById('grand-note').textContent =
+    I18N[LANG].grandNote(rooms.length, fmt(equip), disc, fmt(install));
+  saveState();
+}
+
 function updateRoom(r){
   const el = document.querySelector(`.room[data-id="${r.id}"]`);
   if(el){
@@ -1000,7 +1041,7 @@ document.addEventListener('input', e=>{
     if(k==='q15') v = evenN(v);
     r.ov[k]=v; if(v===auto) delete r.ov[k];
     if(['q15','q218','q118'].includes(k)){ r.q[k]=v; }
-    updateRoom(r);
+    refreshTotals();
     return;
   }
   if(e.target.matches('#discount') || e.target.matches('#install-fee')){ render(); }
@@ -1012,9 +1053,14 @@ document.addEventListener('change', e=>{
     return;
   }
   if(e.target.matches('[data-q]')){
+    /* on blur: commit value, normalize Q15 to even, refresh auto/custom state */
     const roomEl=e.target.closest('.room'); const r=rooms.find(x=>x.id===Number(roomEl.dataset.id));
-    const k=e.target.dataset.q; const v=parseInt(e.target.value,10)||0;
-    if(v<0) e.target.value=0;
+    const k=e.target.dataset.q; const auto=autoMatch(r.q)[k];
+    let v = parseInt(e.target.value,10); if(isNaN(v)||v<0) v=0;
+    if(k==='q15') v = evenN(v);
+    r.ov[k]=v; if(v===auto) delete r.ov[k];
+    if(['q15','q218','q118'].includes(k)){ r.q[k]=v; }
+    updateRoom(r);
     return;
   }
 });
