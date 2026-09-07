@@ -547,7 +547,7 @@
       <div class="stat"><b id="s-q15">0</b><span>Q15</span></div>
       <div class="stat"><b id="s-q218">0</b><span>Q218</span></div>
       <div class="stat"><b id="s-q118">0</b><span>Q118</span></div>
-      <div class="stat"><b id="s-quad">0</b><span>QUAD900</span></div>
+      <div class="stat"><b id="s-quad">0</b><span>QUAD1300</span></div>
       <div class="stat"><b id="s-dual">0</b><span>DUAL2000</span></div>
       <div class="stat"><b id="s-dx04">0</b><span>DX0.4</span></div>
       <div class="stat"><b id="s-dx06">0</b><span>DX0.6</span></div>
@@ -608,7 +608,7 @@
 
 <footer>
   <div class="wrap">
-    <span data-i18n="foot1">Amplifiers: DUAL2000 drives up to 2× Q218 or 2× Q118 · QUAD900 drives up to 4× Q15 · Q15 always even. Processors matched by channel capacity: DX0.4 = 4-ch, DX0.6 = 6-ch, added alternately (4 → 10 → 14 → 20 …) — e.g. 4 speakers need 1× DX0.4 only · 5 room-size categories.</span>
+    <span data-i18n="foot1">Amplifiers: DUAL2000 drives up to 2× Q218 or 2× Q118 · QUAD1300 drives up to 4× Q15 · Q15 always even. Processors matched by channel capacity: DX0.4 = 4-ch, DX0.6 = 6-ch, added alternately (4 → 10 → 14 → 20 …) — e.g. 4 speakers need 1× DX0.4 only · 5 room-size categories.</span>
     <span data-i18n="foot2">Prices ex-tax · Martin Audio factory warranty 1 year · VAT invoice +10%.</span>
   </div>
 </footer>
@@ -643,7 +643,7 @@ const I18N = {
     sumDiscounted:'Discounted equipment', sumInstallLabel:'Installation & commissioning',
     perRoom:'/ room', sumInstallTotal:'Install total', sumTotal:'Order total (USD)',
     grandLbl:'Grand Total · USD', printSavePdf:'Print / Save as PDF',
-    foot1:'Amplifiers: DUAL2000 drives up to 2× Q218 or 2× Q118 · QUAD900 drives up to 4× Q15 · Q15 always even. Processors matched by channel capacity: DX0.4 = 4-ch, DX0.6 = 6-ch, added alternately (4 → 10 → 14 → 20 …) — e.g. 4 speakers need 1× DX0.4 only · 5 room-size categories.',
+    foot1:'Amplifiers: DUAL2000 drives up to 2× Q218 or 2× Q118 · QUAD1300 drives up to 4× Q15 · Q15 always even. Processors matched by channel capacity: DX0.4 = 4-ch, DX0.6 = 6-ch, added alternately (4 → 10 → 14 → 20 …) — e.g. 4 speakers need 1× DX0.4 only · 5 room-size categories.',
     foot2:'Prices ex-tax · Martin Audio factory warranty 1 year · VAT invoice +10%.',
     roomNameAria:'Room name', chipSize:'size', roomTotal:'Room total · USD',
     btnDuplicate:'Duplicate', btnReset:'Reset', btnDelete:'Delete',
@@ -694,7 +694,7 @@ const I18N = {
     sumDiscounted:'折扣后设备价', sumInstallLabel:'安装与调试',
     perRoom:'/ 每间', sumInstallTotal:'安装合计', sumTotal:'订单合计 (USD)',
     grandLbl:'总计 · USD', printSavePdf:'打印 / 保存为 PDF',
-    foot1:'功放：DUAL2000 最多驱动 2× Q218 或 2× Q118 · QUAD900 最多驱动 4× Q15 · Q15 必须为偶数。处理器按通道容量匹配：DX0.4 = 4 通道，DX0.6 = 6 通道，交替累加（4 → 10 → 14 → 20 …）—— 例如 4 只音箱仅需 1× DX0.4 · 共 5 档房间尺寸类别。',
+    foot1:'功放：DUAL2000 最多驱动 2× Q218 或 2× Q118 · QUAD1300 最多驱动 4× Q15 · Q15 必须为偶数。处理器按通道容量匹配：DX0.4 = 4 通道，DX0.6 = 6 通道，交替累加（4 → 10 → 14 → 20 …）—— 例如 4 只音箱仅需 1× DX0.4 · 共 5 档房间尺寸类别。',
     foot2:'价格不含税 · Martin Audio 原厂保修 1 年 · 含增值税发票 +10%。',
     roomNameAria:'房间名称', chipSize:'面积', roomTotal:'房间小计 · USD',
     btnDuplicate:'复制', btnReset:'重置', btnDelete:'删除',
@@ -869,7 +869,7 @@ function buildRows(room){
   rows.push(it('Speakers','q15','Q15','specQ15r','unitPc',q.q15,PRICES.Q15));
   rows.push(it('Speakers','q218','Q218','specQ218r','unitPc',q.q218,PRICES.Q218));
   rows.push(it('Speakers','q118','Q118','specQ118r','unitPc',q.q118,PRICES.Q118));
-  rows.push(it('Amplification','quad','QUAD900','specQuad','unitPc',valOf(room,'quad'),PRICES.QUAD));
+  rows.push(it('Amplification','quad','QUAD1300','specQuad','unitPc',valOf(room,'quad'),PRICES.QUAD));
   rows.push(it('Amplification','dual','DUAL2000','specDual','unitPc',valOf(room,'dual'),PRICES.DUAL));
   rows.push(it('Processing & Rack','dx04','DX0.4','specDx04','unitPc',valOf(room,'dx04'),PRICES.DX04));
   rows.push(it('Processing & Rack','dx06','DX0.6','specDx06','unitPc',valOf(room,'dx06'),PRICES.DX06));
@@ -1007,7 +1007,7 @@ function roomHTML(r){
 
     <div class="rack-strip">
       <span class="tag">${t('autoTag')}</span>
-      <span class="chip"><b>${valOf(r,'quad')}</b><span class="u">× QUAD900</span></span>
+      <span class="chip"><b>${valOf(r,'quad')}</b><span class="u">× QUAD1300</span></span>
       <span class="chip"><b>${valOf(r,'dual')}</b><span class="u">× DUAL2000</span></span>
       <span class="chip"><b>${valOf(r,'dx04')}</b><span class="u">× DX0.4</span></span>
       <span class="chip"><b>${valOf(r,'dx06')}</b><span class="u">× DX0.6</span></span>
